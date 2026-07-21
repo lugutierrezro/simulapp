@@ -22,35 +22,32 @@ class _WatermarkPhotoPickerState extends State<WatermarkPhotoPicker> {
   String? _selectedCategory;
   String? _watermarkText;
   bool _isCompressing = false;
+  final _customNameCtrl = TextEditingController();
 
   final List<Map<String, String>> _sampleTacticalPhotos = [
     {
       'label': 'Fuga de Gas / Válvula Dañada',
       'category': 'Fuga de Gas',
       'icon': 'local_fire_department',
-      'bgGradient': 'orange',
     },
     {
       'label': 'Estructura con Grieta Severa',
       'category': 'Colapso',
       'icon': 'business',
-      'bgGradient': 'red',
     },
     {
       'label': 'Vía Secundaria Obstruida',
       'category': 'Obstrucción',
       'icon': 'warning',
-      'bgGradient': 'amber',
     },
     {
       'label': 'Inundación / Rotura de Tubería',
       'category': 'Inundación',
       'icon': 'water_damage',
-      'bgGradient': 'blue',
     },
   ];
 
-  void _selectPhoto(Map<String, String> item) async {
+  void _selectPhoto(String label, String category) async {
     setState(() {
       _isCompressing = true;
     });
@@ -62,16 +59,85 @@ class _WatermarkPhotoPickerState extends State<WatermarkPhotoPicker> {
     final wm = 'EVIDENCIA INSTITUCIONAL INDECI 2026\nFECHA/HORA: $now\nGPS: $gps\nAGENTE: ${widget.agentCode} | SECTOR: ${widget.sector}\n[COMPRIMIDO WEBP 80% - RNF08]';
 
     setState(() {
-      _selectedCategory = item['label'];
+      _selectedCategory = label;
       _watermarkText = wm;
       _isCompressing = false;
     });
 
     widget.onPhotoSelected({
-      'label': item['label']!,
-      'category': item['category']!,
+      'label': label,
+      'category': category,
       'watermark': wm,
     });
+  }
+
+  void _showCustomUploadDialog() {
+    _customNameCtrl.text = 'Foto_Campo_Evidencia_${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}.jpg';
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Row(
+          children: [
+            Icon(Icons.upload_file, color: Color(0xFFF59E0B)),
+            SizedBox(width: 8),
+            Text('Subir Imagen del Dispositivo', style: TextStyle(color: Colors.white, fontSize: 14)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Seleccione o confirme el nombre de la fotografía capturada desde la cámara o galería:',
+              style: TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customNameCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              decoration: const InputDecoration(
+                labelText: 'Nombre / Etiqueta de la Foto',
+                labelStyle: TextStyle(color: Colors.white70),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Color(0xFF4ADE80), size: 16),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Se aplicará marca de agua de geolocalización inalterable y compresión WebP 80% automáticamente.',
+                    style: TextStyle(color: Color(0xFF4ADE80), fontSize: 10),
+                  ),
+                ),
+              ],
+            )
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              final customName = _customNameCtrl.text.trim();
+              _selectPhoto(customName.isNotEmpty ? customName : 'Imagen_Cargada_Dispositivo.jpg', 'Fotografía Subida');
+            },
+            icon: const Icon(Icons.cloud_upload),
+            label: const Text('PROCESAR Y SUBIR'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: Colors.black,
+              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          )
+        ],
+      ),
+    );
   }
 
   @override
@@ -152,7 +218,7 @@ class _WatermarkPhotoPickerState extends State<WatermarkPhotoPicker> {
                     IconButton(
                       icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
                       onPressed: () => setState(() => _selectedCategory = null),
-                      tooltip: 'Cambiar Foto',
+                      tooltip: 'Cambiar / Subir otra foto',
                     )
                   ],
                 ),
@@ -190,11 +256,26 @@ class _WatermarkPhotoPickerState extends State<WatermarkPhotoPicker> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Seleccione evidencia táctica para capturar y estampar:',
-                style: TextStyle(fontSize: 12, color: Colors.black87),
+              // Button to upload custom photo from device / gallery
+              ElevatedButton.icon(
+                onPressed: _showCustomUploadDialog,
+                icon: const Icon(Icons.file_upload_outlined, color: Colors.white),
+                label: const Text('SUBIR IMAGEN DESDE EL DISPOSITIVO / GALERÍA'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 44),
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+
+              const Text(
+                'O seleccione una foto de muestra táctica:',
+                style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -208,7 +289,7 @@ class _WatermarkPhotoPickerState extends State<WatermarkPhotoPicker> {
                 itemBuilder: (context, index) {
                   final item = _sampleTacticalPhotos[index];
                   return InkWell(
-                    onTap: () => _selectPhoto(item),
+                    onTap: () => _selectPhoto(item['label']!, item['category']!),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                       decoration: BoxDecoration(
@@ -218,7 +299,7 @@ class _WatermarkPhotoPickerState extends State<WatermarkPhotoPicker> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.photo_camera, color: Colors.amber, size: 22),
+                          const Icon(Icons.photo_camera, color: Colors.amber, size: 20),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
